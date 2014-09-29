@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# You may want to modify ./bin/mongo_server with your settings
+# If you need multiple workers then you may need to make a slight
+# modification since this runs one worker with the name worker.
+
+# Started inside bin dir so we need to go up one dir
+# this is to fix an issue that came up
+export FOREVER_BIN="../node_modules/forever/bin/forever"
+
+if [ -z "$1" ]; then
+  echo "---------------------------------------------------------"
+  echo "Must specify an action start|stop|restart"
+  echo "start and restart take the env as the next argument."
+  echo "---------------------------------------------------------"
+  echo "Examples: start production_batch or restart development"
+  echo "---------------------------------------------------------"
+  echo "Please look at:"
+  echo "scripts-working-copy/molo/connections.json for more info."
+  echo "---------------------------------------------------------"
+  echo "Other Commands:"
+  echo "---------------------------------------------------------"
+  echo "./deploy copy-scripts"
+  echo "^^^^^^^^^^^^^^^^^^^^^------------------------------------"
+  echo "This will copy soonerio_scripts to scripts-working-copy"
+  echo "It also will set execute (+x) and add the scripts to the"
+  echo "web interface for you by running the update command"
+  echo "---------------------------------------------------------"
+  echo "./deploy edit-env"
+  echo "^^^^^^^^^^^^^^^^^----------------------------------------"
+  echo "Opens connections.json in vim for you"
+  echo "---------------------------------------------------------"
+fi
+
+if [ "$1" == 'stop' ]; then
+  cd bin
+  $FOREVER_BIN stop mongo
+  $FOREVER_BIN stop worker
+  $FOREVER_BIN stop web
+fi
+
+if [ "$1" == 'edit-env' ]; then
+  vim ./scripts-working-copy/molo/connections.json
+fi
+
+if [ "$1" == 'copy-scripts' ]; then
+  echo "---------------------------------------------------------"
+  echo "Copying soonerio_scripts to scripts-working-copy..."
+  cp -Rf ./soonerio_scripts/ ./scripts-working-copy/
+  echo "Finished."
+  echo "---------------------------------------------------------"
+  echo "Setting execute bit on all .coffee files..."
+  chmod +x ./scripts-working-copy/*.coffee
+  echo "Finished."
+  echo "---------------------------------------------------------"
+  echo "Updating scripts to show in web interface"
+  coffee ./bin/deployer.coffee update
+  echo "Finished."
+  echo "---------------------------------------------------------"
+fi
+
+if [ "$1" == 'start' ]; then
+  cd bin
+  $FOREVER_BIN start --append --uid "mongo" -c '/bin/sh' "./mongo_server"
+  $FOREVER_BIN start --append --uid "worker" -c '/bin/sh' "./worker_server" "$2"
+  $FOREVER_BIN start --append --uid "web" -c '/bin/sh' "./web_server" "$2"
+fi
+
+if [ "$1" == 'restart' ]; then
+  cd bin
+  $FOREVER_BIN stop mongo
+  $FOREVER_BIN stop worker
+  $FOREVER_BIN stop web
+  $FOREVER_BIN start --append --uid "mongo" -c '/bin/sh' "./mongo_server"
+  $FOREVER_BIN start --append --uid "worker" -c '/bin/sh' "./worker_server" "$2"
+  $FOREVER_BIN start --append --uid "web" -c '/bin/sh' "./web_server" "$2"
+fi

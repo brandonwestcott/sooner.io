@@ -32,6 +32,7 @@
     , "temp": "0.5.0"
     , "carrier": "0.1.10"
     , "jade-browser": "0.0.9"
+    , "forever": ""
   }
   , "devDependencies": {
       "jasmine-node": "1.7.0"

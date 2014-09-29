@@ -5,5 +5,7 @@ output
 scripts.git
 scripts-working-copy
 tmp
-deploy
+deploy/*
+data/*
 builtAssets
+soonerio_scripts
