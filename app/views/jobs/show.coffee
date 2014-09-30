@@ -25,8 +25,10 @@ class app.views.jobs.show extends Backbone.BoundView
     name:
       selector: '.name'
       converter: (_, v, __, m) -> m.nameWithDisabled()
+    description: '.description'
     schedule: '.schedule'
     hooks: '.hooks'
+    timeout: '.timeout'
     workerName: '.workerName'
     lastStatus:
       selector: '.lastStatus'
@@ -42,19 +44,11 @@ class app.views.jobs.show extends Backbone.BoundView
       selector: '.updatedAt'
       converter: app.converters.date_time.long
 
-  showDataField: =>
-    $('#run-data').fadeIn()
-
-  hideDataField: =>
-    $('#run-data').fadeOut()
-
   runCreatedCallback: (run) =>
     app.workspace.navigate "/runs/#{run.get('_id')}", trigger: yes
 
   bindRun: =>
     @$el.find('#run-data-area')
-    .mouseenter(_.debounce(@showDataField, 500, yes))
-    .mouseleave(_.debounce(@hideDataField, 500, yes))
     .find('.btn').click (e) =>
       e.preventDefault()
       if @model.get('enabled') or confirm('This job is disabled. Click OK to run it anyway.')

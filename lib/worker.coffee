@@ -33,9 +33,14 @@ class Worker
     @hook.emit 'cxn::connected'
 
   cleanUp: =>
-    models.run.find {status: {$in: ['busy', 'idle']}, workerName: @hook.name}, (err, runs) =>
-      console.log "Found #{runs.length} run(s) in limbo."
-      run.fail('stuck running during restart') for run in runs
+    models.run.where('status').in(['busy', 'idle']).where('workerName', @hook.name).exec (err, runs) =>
+      if err
+        console.log "Too many failed runs... marking them all failed."
+        models.run.update {status: {$in: ['busy', 'idle']}}, {$set: {status: 'fail'}}, {multi: true}, (err) ->
+          if err then throw err
+      else
+        console.log "Found #{runs.length} run(s) in limbo."
+        run.fail('stuck running during restart') for run in runs
 
   loadJobs: =>
     console.log 'loading jobs...'
@@ -70,7 +75,7 @@ class Worker
   triggerJob: (data) =>
     models.run.findOne _id: data.id || data._id, workerName: @hook.name, (err, run) =>
       if err or !run
-        console.log "Could not find run with id #{data.runId}."
+        console.log "Could not find run with id #{data.id || data._id}. Error code: #{err || 'none'}"
       else
         console.log "running: #{run.name}"
         run.run =>
@@ -80,7 +85,7 @@ class Worker
     models.run.findOne _id: data.id || data._id, workerName: @hook.name, (err, run) =>
       if !err and run
         console.log "stopping: #{run.name} run #{run._id}"
-        run.stop()
+        run.stop('user')
 
   watchExit: =>
     process.on 'SIGINT', =>

@@ -10,11 +10,7 @@ queue = (name) ->
   name = "queue_#{name}"
   model = queues[name]
   unless model
-    schema = new Schema
-      status: String
-      data: {}
-      createdAt: Date
-      updatedAt: Date
+    schema = new Schema {status: String, data: {}, createdAt: Date, updatedAt: Date}, {collection: name}
     schema.pre 'save', (next) ->
       if !@createdAt
         @createdAt = @updatedAt = new Date()
@@ -31,7 +27,7 @@ queue.connect = ->
   if !mongoose.connection or mongoose.connection.readyState != 1
     # FIXME config path should be configurable
     @config = JSON.parse(fs.readFileSync(__dirname + '/../config.json'))
-    mongoose.connect @config.db
+    mongoose.connect @config.db, {db: {safe:true}}
 
 queue.disconnect = ->
   mongoose.disconnect()
@@ -56,7 +52,7 @@ queue.sync = (socket) ->
           console.log err
           callback(err.toString())
         else
-          q.skip(data.skip).limit(Math.min(data.limit, 100)).run (err, models) ->
+          q.skip(data.skip).limit(Math.min(data.limit, 100)).exec (err, models) ->
             if err
               console.log err
               callback(err.toString())

@@ -6,6 +6,14 @@ fieldset
       | filename:
       span#path
   .control-group
+    label.control-label(for='description') Description
+    textarea.input-large#description(name='description')
+  .control-group
+    label.control-label(for='group') Group
+    input.input-large#group(name='group')
+    span.help-inline
+      | jobs with the same group name will be grouped together in the index
+  .control-group
     label.control-label(for='enabled') Enabled
     input#enabled(type='checkbox', name='enabled', value='enabled')
   .control-group
@@ -21,6 +29,11 @@ fieldset
     label.control-label(for='workerName') Worker Name
     input.input-large#workerName(name='workerName')
     span.help-inline which worker will process this job
+  .control-group
+    label.control-label(for='timeout') Timeout
+    input#timeout(name='timeout', value='0')
+    span.help-inline
+      | max number of seconds to run; zero to disable timeout
   .control-group
     label.control-label(for='mutex') Mutex
     input#mutex(type='checkbox', name='mutex', value='on')

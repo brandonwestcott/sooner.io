@@ -3,7 +3,8 @@ class app.collections.jobs extends Backbone.Collection
   namespace: 'job'
 
   comparator: (job) ->
-    job.get('name')
+    new String(job.get('group') || 'zzz').toLowerCase() +
+    new String(job.get('name')).toLowerCase()
 
   getOrFetch: (id, callback) ->
     obj = @get(id)

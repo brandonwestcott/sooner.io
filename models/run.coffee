@@ -22,6 +22,10 @@ schema = new Schema
     type: String
   hooks:
     type: Array
+  workerName:
+    type: String
+  timeout:
+    type: Number
   data:
     type: {}
   progress:
@@ -61,14 +65,30 @@ schema.methods.succeed = (callback) ->
   @updateJob callback
 
 schema.methods.fail = (message, callback) ->
+  message += "\n"
   console.log 'job', @name, 'fail:', message
   @status = 'fail'
   @output += message
   @ranAt = @completedAt = new Date()
   @refresh message
+  try
+    @save (err) =>
+      if err then throw err
+      @updateJob =>
+        if callback
+          callback message
+  catch err
+    console.log 'could not save run'
+    if callback
+      callback message
+
+schema.methods.failSilently = (message, callback) ->
+  console.log 'job', @name, 'fail silently:', message
+  @status = 'fail'
+  @refresh message
   @save (err) =>
-    if err then throw err
-    @updateJob =>
+    @remove (err) =>
+      if err then throw err
       if callback
         callback message
 
@@ -104,13 +124,14 @@ schema.methods.run = (callback) ->
       if err then throw err
 
       if runningCount > 0 and job.mutex
-        @fail 'this job is already running', callback
+        @failSilently 'this job is already running', callback
       else
         @status = 'busy'
         @ranAt = new Date()
         @save()
         @updateJob()
         @refresh()
+        timer = null
 
         script.on 'start', (pid) =>
           @pid = pid
@@ -123,6 +144,7 @@ schema.methods.run = (callback) ->
           @save()
 
         script.on 'end', (code) =>
+          clearTimeout(timer) if timer
           @completedAt = new Date()
           @result = code
           if code == 0
@@ -135,12 +157,17 @@ schema.methods.run = (callback) ->
 
         script.execute @data
 
+        if job.timeout > 0
+          console.log("Setting timeout for '#{@name}' of #{job.timeout} seconds")
+          timer = setTimeout _.bind(@stop, @, "timeout (#{job.timeout})"), job.timeout * 1000
+
 schema.methods.stoppable = ->
   @status in ['idle', 'busy']
 
-schema.methods.stop = ->
+schema.methods.stop = (reason) ->
   if @pid
     process.kill @pid, 'SIGINT'
+    @fail "script killed by #{reason}"
 
 schema.methods.setProgress = (current, max, callback) ->
   if current == 'max'
@@ -166,14 +193,17 @@ model.sync = (socket) ->
     if id = (data.id || data._id)
       @findById id, callback
     else
-      q = @where('jobId', data.jobId).select(LISTABLE_ATTRS)
-      q = q.sort.apply(q, data.sort || ['createdAt', -1])
+      attrs = {}; attrs[a] = true for a in LISTABLE_ATTRS
+      q = @where('jobId', data.jobId).select(attrs)
+      data.sort ?= {createdAt: -1}
+      data.sort = _.flatten([key, dir] for key, dir of data.sort) # hacky hack
+      q = q.sort.apply(q, data.sort)
       _.clone(q).count (err, count) ->
         if err
           console.log err
           callback(err.toString())
         else
-          q.skip(data.skip).limit(Math.min(data.limit, 100)).run (err, models) ->
+          q.skip(data.skip).limit(Math.min(data.limit, 100)).exec (err, models) ->
             if err
               console.log err
               callback(err.toString())

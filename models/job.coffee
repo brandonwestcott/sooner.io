@@ -8,6 +8,10 @@ schema = new Schema
   name:
     type: String
     required: true
+  description:
+    type: String
+  group:
+    type: String
   schedule:
     type: String
     validate: (v) ->
@@ -42,6 +46,9 @@ schema = new Schema
   mutex:
     type: Boolean
     default: true
+  timeout:
+    type: Number
+    default: 0
   deleted:
     type: Boolean
     default: false
@@ -54,12 +61,15 @@ schema.pre 'save', (next) ->
   next()
 
 schema.methods.updateAttributes = (attrs) ->
-  @name       = attrs.name
-  @schedule   = attrs.schedule
-  @enabled    = attrs.enabled == '1'
-  @mutex      = attrs.mutex == '1'
-  @hooks      = attrs.hooks
-  @workerName = attrs.workerName
+  @name        = attrs.name
+  @description = attrs.description
+  @group       = attrs.group
+  @schedule    = attrs.schedule
+  @enabled     = attrs.enabled == '1'
+  @mutex       = attrs.mutex == '1'
+  @hooks       = attrs.hooks
+  @workerName  = attrs.workerName
+  @timeout     = attrs.timeout
 
 schema.methods.newRun = ->
   new models.run
@@ -67,10 +77,11 @@ schema.methods.newRun = ->
     name:       @name
     path:       @path
     workerName: @workerName
+    timeout:    @timeout
     data:       ''
 
 schema.methods.newCron = ->
-  new CronJob @schedule, =>
+  cron = new CronJob @schedule, =>
     run = @newRun()
     run.save (err, run) ->
       if err
@@ -78,6 +89,7 @@ schema.methods.newCron = ->
       else
         GLOBAL.hook.emit 'sync::refresh::job', _id: run.jobId
         GLOBAL.hook.emit 'sync::trigger::run', _id: run._id, name: run.name
+  cron.start()
 
 schema.methods.hookEvent = (hook, data) ->
   console.log "#{@name} triggered by event '#{hook}' with data #{data}"
@@ -104,7 +116,7 @@ model.sync = (socket) ->
       if err or not job
         callback err || 'job not found'
       else
-        for attr in ['name', 'enabled', 'schedule', 'hooks', 'workerName', 'mutex']
+        for attr in ['name', 'description', 'group', 'enabled', 'schedule', 'hooks', 'workerName', 'mutex', 'timeout']
           job[attr] = data[attr] if data[attr]?
         job.save (err) =>
           if err

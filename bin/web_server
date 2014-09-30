@@ -1,0 +1,5 @@
+#!/bin/sh
+
+export MOLO_ENV="$1"
+
+coffee ./web.coffee

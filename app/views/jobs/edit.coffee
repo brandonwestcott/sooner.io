@@ -7,6 +7,8 @@ class app.views.jobs.edit extends Backbone.BoundView
 
   bindings:
     name: '#name'
+    description: '#description'
+    group: '#group'
     path: '#path'
     enabled:
       selector: '#enabled'
@@ -17,6 +19,7 @@ class app.views.jobs.edit extends Backbone.BoundView
     mutex:
       selector: '#mutex'
       elAttribute: 'checked'
+    timeout: '#timeout'
 
   render: ->
     super()
